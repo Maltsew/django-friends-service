@@ -16,12 +16,12 @@ info:
 servers:
   - url: https://localhost:8080/api/v1
 paths:
-  /users:
+  /register:
     post:
       summary: Регистрация нового пользователя
       operationId: createUser
       tags:
-        - users
+        - user
       requestBody:
         required: true
         content:
@@ -41,9 +41,167 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /friend-requests/{to_user_id}:
+    post:
+      summary: Отправка заявки в друзья
+      description: Отправляет заявку в друзья от текущего пользователя к другому пользователю
+      operationId: FriendRequest
+      parameters:
+        - name: to_user_id
+          in: path
+          description: id пользователя, которому отправляется заявка
+          required: true
+          schema:
+            type: integer
+      tags:
+        - friend_requests
+      responses:
+        '200':
+          description: Заявка в друзья успешно отправлена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: integer
+                    description: Идентификатор заявки в друзья
+                  from_user_id:
+                    type: integer
+                    description: Идентификатор отправителя заявки в друзья
+                  to_user_id:
+                    type: integer
+                    description: Идентификатор получателя заявки в друзья
+                  status:
+                    type: string
+                    description: Статус заявки в друзья (pending)
+        '400':
+          description: Некорректный запрос
+  /friend-requests/{request_id}/accept:
+    put:
+      summary: Принять заявку в друзья
+      operationId: acceptFriendRequest
+      tags:
+        - friend_requests
+      parameters:
+        - name: request_id
+          in: path
+          description: id заявки в друзья
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Заявка в друзья принята
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: integer
+                    description: Идентификатор заявки в друзья
+                  from_user_id:
+                    type: integer
+                    description: Идентификатор отправителя заявки в друзья
+                  to_user_id:
+                    type: integer
+                    description: Идентификатор получателя заявки в друзья
+                  status:
+                    type: string
+                    description: Статус заявки в друзья (accepted)
+  /friend-requests/{request_id}/reject:
+    put:
+      summary: Отклонить заявку в друзья
+      operationId: rejectFriendRequest
+      tags:
+        - friend_requests
+      parameters:
+        - name: request_id
+          in: path
+          description: id заявки в друзья
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Заявка в друзья отклонена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: integer
+                    description: Идентификатор заявки в друзья
+                  from_user_id:
+                    type: integer
+                    description: Идентификатор отправителя заявки в друзья
+                  to_user_id:
+                    type: integer
+                    description: Идентификатор получателя заявки в друзья
+                  status:
+                    type: string
+                    description: Статус заявки в друзья (reject)
+  /friend-requests/incoming:
+    get:
+      summary: Получить входящие заявки в друзья
+      operationId: incomingFriendRequests
+      tags:
+        - user_requests
+      parameters:
+        - name: user_id
+          in: query
+          description: id пользователя, который указан в to_user_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendRequest"
+  /friend-requests/outgoing:
+    get:
+      summary: Получить исходящие заявки в друзья
+      operationId: outgoingFriendRequests
+      tags:
+        - user_requests
+      parameters:
+        - name: user_id
+          in: query
+          description: id пользователя, который указан в from_user_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendRequest"
   /friends:
     get:
-      summary: Получить список друзей пользователя
+      summary: Получить список всех друзей пользователя
+      tags:
+        - user
+      description: Возвращает список друзей
+      parameters:
+        - in: query
+          name: user_id
+          description: id пользователя
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            description: под id подразумевается id самого user
       responses:
         '200':
           description: OK
@@ -52,7 +210,131 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Friendship'
+                  type: object
+                  properties:
+                    user_id:
+                      type: integer
+                    username:
+                      type: string
+  /friendship-status:
+    get:
+      summary: Получить статус дружбы пользователя с другим пользователем
+      description: Возвращает статус дружбы
+      tags:
+        - user
+      parameters:
+        - in: query
+          name: user_id
+          schema:
+            type: integer
+          required: true
+          description: id пользователя
+        - in: query
+          name: friend_id
+          schema:
+            type: integer
+          required: true
+          description: id пользователя, с котором проверяется статус дружбы
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [Нет ничего, Есть исходящая заявка, Есть входящая заявка, Уже друзья]
+                    description: Статус дружбы
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Такого пользователя не существует
+  /friends/{friend_id}:
+    delete:
+      summary: Удалить друга из списка друзей
+      tags:
+        - user
+      parameters:
+        - name: friend_id
+          in: path
+          description: Идентификатор друга
+          required: true
+          schema:
+            type: integer
+        - name: user_id
+          in: query
+          description: Идентификатор пользователя
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Друг удален из списка друзей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Сообщение об успешном удалении
+        '404':
+          description: Не найден друг с таким идентификатором
+        default: 
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /friendship:
+    post:
+      summary: Создание взаимной дружбы
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                  description: id пользователя 1
+                another_user_id:
+                  type: integer
+                  description: id пользователя 2
+              required:
+                - user_id
+                - another_user_id
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: id дружбы
+                  from_user_id:
+                    type: integer
+                    description: id пользователя 1
+                  to_user_id:
+                    type: integer
+                    description: id пользователя 2
+                  status:
+                    type: string
+                    description: статус дружбы
+        '404':
+          description: Not Found
         default: 
           description: Unexpected error
           content:
@@ -72,7 +354,7 @@ components:
     User:
       type: object
       properties:
-        id:
+        user_id:
           type: integer
           description: id of current user
         username:
@@ -80,26 +362,27 @@ components:
           description: username of the user
     Error:
       type: object
-      required: 
-        - code
-        - message
       properties: 
         code:
           type: integer
         message:
           type: string
-    Friendship:
+      required: 
+        - code
+        - message
+    FriendRequest:
       type: object
       properties:
-        id:
+        request_id:
           type: integer
-          description: ID of the friendship
-        user_id:
+          description: Идентификатор заявки в друзья
+        from_user_id:
           type: integer
-          description: ID of the user who sent the request
-        friend_id:
+          description: Идентификатор отправителя заявки в друзья
+        to_user_id:
           type: integer
-          description: ID of the friend added
-        message:
+          description: Идентификатор получателя заявки в друзья
+        status:
           type: string
-          description: Optional message sent to the friend
+          enum: [pending, accept, reject]
+          description: Статус заявки в друзья
