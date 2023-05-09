@@ -53,14 +53,16 @@ class FriendshipRequest(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Создние заявки на дружбу
+        Расширение метода save() - нельзя отправить заявку себе самому
         """
         if self.from_user == self.to_user:
             raise ValidationError("Нельзя отправить заявку в друзья самому себе")
-        request, created = FriendshipRequest.objects.get_or_create(
-            from_user=self.from_user, to_user=self.to_user
-        )
         super().save(*args, **kwargs)
+
+    def accept_friend_request(self):
+        """
+        Принять заявку в друзья от другого пользователя
+        """
 
 
 class Friends(models.Model):
