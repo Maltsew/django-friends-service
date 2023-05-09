@@ -1,11 +1,16 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
-class CustomUser(models.Model):
+class User(AbstractUser):
     """
     Модель пользователя для сервиса друзей
     """
-    username = models.CharField(max_length=150, unique=True, help_text='Обязательное поле', verbose_name='username')
+    username = models.CharField(
+        'username',
+        max_length=50,
+        unique=True
+    )
 
     def __str__(self):
         return f"username: {self.username}"
@@ -22,12 +27,12 @@ class FriendshipRequest(models.Model):
         (4, 'Reject'),
     )
     from_user = models.ForeignKey(
-        CustomUser,
+        User,
         on_delete=models.CASCADE,
         related_name='friendship_request_sender'
     )
     to_user = models.ForeignKey(
-        CustomUser,
+        User,
         on_delete=models.CASCADE,
         related_name='friendship_request_receiver'
     )
@@ -45,14 +50,24 @@ class FriendshipRequest(models.Model):
     def __str__(self):
         return f"username {self.from_user} created friendship request to {self.to_user}"
 
+    def add_friend_request(self, from_user, to_user):
+        """
+        Создние заявки на дружбу
+        """
+        print('request created')
+        request, created = FriendshipRequest.objects.get_or_create(
+            from_user=from_user, to_user=to_user, status='Pending'
+        )
+        return request
+
 class Friends(models.Model):
     from_user = models.ForeignKey(
-        CustomUser,
+        User,
         on_delete=models.CASCADE,
         related_name='user'
     )
     to_user = models.ForeignKey(
-        CustomUser,
+        User,
         on_delete=models.CASCADE,
         related_name='friend'
     )
