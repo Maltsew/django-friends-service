@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 class User(AbstractUser):
@@ -50,15 +51,17 @@ class FriendshipRequest(models.Model):
     def __str__(self):
         return f"username {self.from_user} created friendship request to {self.to_user}"
 
-    def add_friend_request(self, from_user, to_user):
+    def save(self, *args, **kwargs):
         """
         Создние заявки на дружбу
         """
-        print('request created')
+        if self.from_user == self.to_user:
+            raise ValidationError("Нельзя отправить заявку в друзья самому себе")
         request, created = FriendshipRequest.objects.get_or_create(
-            from_user=from_user, to_user=to_user, status='Pending'
+            from_user=self.from_user, to_user=self.to_user
         )
-        return request
+        super().save(*args, **kwargs)
+
 
 class Friends(models.Model):
     from_user = models.ForeignKey(
