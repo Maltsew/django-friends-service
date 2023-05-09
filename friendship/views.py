@@ -9,7 +9,7 @@ from django.db import IntegrityError
 from psycopg2.errors import UniqueViolation
 
 # Create your views here.
-from .models import User, FriendshipRequest
+from .models import User, FriendshipRequest, Friends
 from .serializers import RegisterSerializer, FriendshipRequestSerializer
 from rest_framework import generics
 from rest_framework.views import APIView
@@ -46,5 +46,57 @@ class CreateFriendRequestView(generics.ListCreateAPIView):
         except (IntegrityError, UniqueViolation) as e:
             return Response(
                 {'message': str(e)},
+                status.HTTP_400_BAD_REQUEST
+            )
+
+
+class AcceptFriendRequestView(generics.ListCreateAPIView):
+    """
+
+    """
+    queryset = FriendshipRequest.objects.all()
+    permission_classes = (AllowAny,)
+    serializer_class = FriendshipRequestSerializer
+
+    def put(self, request, *args, **kwargs):
+        """
+        : kwargs : содержит id заявки, которую нужно принять
+        : to_user : всегда request.user
+        : from_user : любой другой пользователь
+        При переходе по эндпоинту, to_user проверяет, есть ли для него заявка в друзья
+        если есть, она принимается, заявка удаляется а данные пользователи становятся друзьями
+        """
+        try:
+            # получаем id заявки в друзья
+            friend_request = FriendshipRequest.objects.get(pk=kwargs['pk'])
+        except ObjectDoesNotExist as e:
+            return Response(
+                {'message': str(e)},
+                status.HTTP_404_NOT_FOUND
+            )
+        to_user = request.user
+        # если заявка адресована request.user
+        if friend_request.to_user == to_user:
+            # статус заявки обновлен на 3 (принята)
+            FriendshipRequest.objects.filter(pk=kwargs['pk']).update(request_status=3)
+            accepted_request = FriendshipRequest.objects.get(pk=kwargs['pk'])
+            try:
+                # если заявка принята - создаем дружбу
+                Friends.objects.create(from_user=friend_request.from_user, to_user=to_user)
+            # если уже друзья - обрабатываем как 400
+            # TODO создать ошибку по условию "уже друзья"
+            except (IntegrityError, UniqueViolation) as e:
+                return Response(
+                    {'message': str(e)},
+                    status.HTTP_400_BAD_REQUEST
+                )
+            return Response(
+                FriendshipRequestSerializer(accepted_request).data,
+                status.HTTP_200_OK
+            )
+        # если по эндпоинту обратился user1, a to_user!=user1, выкидываем BAD REQUEST
+        else:
+            return Response(
+                {'message'},
                 status.HTTP_400_BAD_REQUEST
             )
