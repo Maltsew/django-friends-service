@@ -5,7 +5,8 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from . import serializers
-from django.http import Http404
+from django.db import IntegrityError
+from psycopg2.errors import UniqueViolation
 
 # Create your views here.
 from .models import User, FriendshipRequest
@@ -28,13 +29,22 @@ class CreateFriendRequestView(generics.ListCreateAPIView):
     def post(self, request, *args, **kwargs):
         try:
             to_user = User.objects.get(pk=kwargs['pk'])
-        except ObjectDoesNotExist:
-            raise Http404("Does not exist")
-        friend_obj = FriendshipRequest.objects.create(
+        except ObjectDoesNotExist as e:
+            return Response(
+                {'message': str(e)},
+                status.HTTP_404_NOT_FOUND
+            )
+        try:
+            friend_obj = FriendshipRequest.objects.create(
             from_user=request.user,
             to_user=to_user,
         request_status=2)
-        return Response(
-            FriendshipRequestSerializer(friend_obj).data,
-            status.HTTP_201_CREATED
-        )
+            return Response(
+                FriendshipRequestSerializer(friend_obj).data,
+                status.HTTP_201_CREATED
+            )
+        except (IntegrityError, UniqueViolation) as e:
+            return Response(
+                {'message': str(e)},
+                status.HTTP_400_BAD_REQUEST
+            )
