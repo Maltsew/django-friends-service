@@ -45,7 +45,6 @@ class FriendshipRequest(models.Model):
     class Meta:
         verbose_name = 'Заявка в друзья'
         verbose_name_plural = 'Заявки в друзья'
-        # нельзя создать заявку на дружбу самому себе
         unique_together = ('from_user', 'to_user')
 
     def __str__(self):
