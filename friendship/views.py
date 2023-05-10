@@ -86,21 +86,21 @@ class AcceptFriendRequestView(generics.ListCreateAPIView):
             )
         # если заявка адресована request.user
         if friend_request.to_user == to_user:
-            # статус заявки обновлен на 3 (принята)
             FriendshipRequest.objects.filter(pk=kwargs['pk']).update(request_status=3)
-            accepted_request = FriendshipRequest.objects.get(pk=kwargs['pk'])
             try:
                 # если заявка принята - создаем дружбу
-                Friends.objects.create(from_user=friend_request.from_user, to_user=to_user)
+                friendships = Friends.objects.create(from_user=friend_request.from_user, to_user=to_user)
+                # если создалась дружба - удаляем заявку на дружбу
+                accepted_request = FriendshipRequest.objects.get(pk=kwargs['pk'])
+                accepted_request.delete()
             # если уже друзья - обрабатываем как 400
-            # TODO создать ошибку по условию "уже друзья"
             except (IntegrityError, UniqueViolation) as e:
                 return Response(
                     {'message': str(e)},
                     status.HTTP_400_BAD_REQUEST
                 )
             return Response(
-                FriendshipRequestSerializer(accepted_request).data,
+                FriendshipRequestSerializer(friendships).data,
                 status.HTTP_200_OK
             )
         # если по эндпоинту обратился user1, a to_user!=user1, выкидываем BAD REQUEST
@@ -264,3 +264,41 @@ class FriendListView(generics.ListCreateAPIView):
             friend_list[user_id] = username
         # и вывожу пары id: username json-ом
         return JsonResponse(friend_list)
+
+class FriendshipStatusListView(generics.ListCreateAPIView):
+    users = User.objects.all()
+    friend_request_queryset = FriendshipRequest.objects.all()
+    friendship_queryset = Friends.objects.all()
+    """
+    Статус дружбы пользователя с другим пользователем
+    """
+    def get(self, request, *args, **kwargs):
+        """
+        Получить статус дружбы
+        """
+        user = request.user
+        if user.is_anonymous:
+            return Response(
+                {'message': "UNAUTHORIZED"},
+                status.HTTP_401_UNAUTHORIZED
+            )
+        user_id = request.user.id # сам user
+        checked_user_id = request.GET.get('user_id') # id пользователя, с которым проверяется статус дружбы
+        user_username = FriendshipStatusListView.users.get(id=user_id)
+        checked_user_username = FriendshipStatusListView.users.get(id=checked_user_id)
+        # необходимо сделать две проверки на наличие любых отношений в Friends
+        first_friendship_check = FriendshipStatusListView.friendship_queryset.filter(from_user=user_username,
+                                                                                     to_user=checked_user_username)
+        second_friendship_check = FriendshipStatusListView.friendship_queryset.filter(from_user=checked_user_username,
+                                                                                     to_user=user_username)
+        if first_friendship_check or second_friendship_check:
+            return Response(
+                {'message': "Уже друзья"},
+                status.HTTP_200_OK
+                )
+        first_friend_request_check = FriendshipStatusListView.friend_request_queryset.filter(from_user=user_username,
+                                                                                     to_user=checked_user_username)
+        return Response(
+            {'message': "Нет ничего"},
+            status.HTTP_200_OK
+        )
