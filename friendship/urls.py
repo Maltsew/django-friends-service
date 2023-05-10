@@ -13,6 +13,7 @@ urlpatterns = [
     path('friend-requests/outgoing/', OutgoingFriendRequestView.as_view(), name='friend-request-outgoing'),
     path('friends/', FriendListView.as_view(), name='friends'),
     path('friendship-status/', FriendshipStatusListView.as_view(), name='friendship-status'),
+    path('friends/<int:pk>/', RemoveFromFriendView.as_view(), name='remove-friend'),
     path('auth/', include('djoser.urls')),
     re_path(r'^auth/', include('djoser.urls.authtoken')),
 ]

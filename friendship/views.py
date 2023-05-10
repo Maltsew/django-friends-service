@@ -321,3 +321,44 @@ class FriendshipStatusListView(generics.ListCreateAPIView):
             {'message': "Нет ничего"},
             status.HTTP_200_OK
         )
+
+
+class RemoveFromFriendView(generics.ListCreateAPIView):
+    """
+    Удаление пользователя из списка друзей
+    """
+    serializer_class = FriendSerializer
+    friendship_queryset = Friends.objects.all()
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Удалить пользователя из друзей
+        """
+        user = request.user
+        if user.is_anonymous:
+            return Response(
+                    {'message': "UNAUTHORIZED"},
+                    status.HTTP_401_UNAUTHORIZED
+                )
+        friend_to_remove = User.objects.get(pk=kwargs['pk'])
+        try:
+            removed_friends_rel = Friends.objects.get(from_user=user, to_user=friend_to_remove)
+            removed_friends_rel.delete()
+
+        except ObjectDoesNotExist as e:
+            try:
+                removed_friends_rel = Friends.objects.get(from_user=friend_to_remove, to_user=user)
+                removed_friends_rel.delete()
+                return Response(
+                    {'message': "Друг удален из списка друзей"},
+                    status.HTTP_200_OK
+                )
+            except ObjectDoesNotExist as e:
+                return Response(
+                {'message': str(e)},
+                status.HTTP_404_NOT_FOUND
+            )
+        return Response(
+            {'message': "Друг удален из списка друзей"},
+            status.HTTP_200_OK
+        )
