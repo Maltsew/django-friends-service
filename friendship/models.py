@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 
-# Create your models here.
+
 class User(AbstractUser):
     """
     Модель пользователя для сервиса друзей
@@ -65,6 +65,10 @@ class FriendshipRequest(models.Model):
 
 
 class Friends(models.Model):
+    """
+    Модель, представляющая дружбу
+
+    """
     from_user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -80,8 +84,15 @@ class Friends(models.Model):
         verbose_name = 'Друг'
         verbose_name_plural = 'Друзья'
         # нельзя быть другом самому себе
-        unique_together = ('from_user', 'to_user')
 
 
     def __str__(self):
         return f"username {self.from_user} друг для {self.to_user}"
+
+    def save(self, *args, **kwargs):
+        """
+
+        """
+        if Friends.objects.filter(from_user=self.from_user, to_user=self.to_user).exists():
+            raise Exception('Уже друзья')
+        super().save(*args, **kwargs)
