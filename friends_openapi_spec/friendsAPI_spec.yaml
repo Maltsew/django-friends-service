@@ -14,7 +14,7 @@ info:
       8) Если пользователь 1 отправляет заявку пользователю 2, а пользователь 2 отправляет заявку пользователю 1 они автоматически становятся друзьями
   version: 0.0.1
 servers:
-  - url: https://localhost:8080/api/v1
+  - url: http://localhost:8000/api/v1
 paths:
   /register:
     post:
@@ -148,7 +148,7 @@ paths:
       summary: Получить входящие заявки в друзья
       operationId: incomingFriendRequests
       tags:
-        - user_requests
+        - friend_requests
       parameters:
         - name: user_id
           in: query
@@ -170,7 +170,7 @@ paths:
       summary: Получить исходящие заявки в друзья
       operationId: outgoingFriendRequests
       tags:
-        - user_requests
+        - friend_requests
       parameters:
         - name: user_id
           in: query
@@ -228,12 +228,6 @@ paths:
           schema:
             type: integer
           required: true
-          description: id пользователя
-        - in: query
-          name: friend_id
-          schema:
-            type: integer
-          required: true
           description: id пользователя, с котором проверяется статус дружбы
       responses:
         '200':
@@ -288,53 +282,6 @@ paths:
                     description: Сообщение об успешном удалении
         '404':
           description: Не найден друг с таким идентификатором
-        default: 
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /friendship:
-    post:
-      summary: Создание взаимной дружбы
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                user_id:
-                  type: integer
-                  description: id пользователя 1
-                another_user_id:
-                  type: integer
-                  description: id пользователя 2
-              required:
-                - user_id
-                - another_user_id
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    description: id дружбы
-                  from_user_id:
-                    type: integer
-                    description: id пользователя 1
-                  to_user_id:
-                    type: integer
-                    description: id пользователя 2
-                  status:
-                    type: string
-                    description: статус дружбы
-        '404':
-          description: Not Found
         default: 
           description: Unexpected error
           content:
