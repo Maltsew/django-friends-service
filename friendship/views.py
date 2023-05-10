@@ -10,9 +10,13 @@ from psycopg2.errors import UniqueViolation
 
 # Create your views here.
 from .models import User, FriendshipRequest, Friends
-from .serializers import RegisterSerializer, FriendshipRequestSerializer
+from .serializers import RegisterSerializer, FriendshipRequestSerializer, FriendSerializer
 from rest_framework import generics
 from rest_framework.views import APIView
+from django.core import serializers
+
+from django.http import JsonResponse
+
 
 
 class RegisterView(generics.CreateAPIView):
@@ -214,3 +218,49 @@ class OutgoingFriendRequestView(generics.ListCreateAPIView):
             FriendshipRequestSerializer(outgoing_requests, many=True).data,
             status.HTTP_200_OK
         )
+
+
+class FriendListView(generics.ListCreateAPIView):
+    """
+    Просмотр списка своих друзей
+    Создать дружбу между user1 и user2 можно 2 способами:
+    1) user1 отправил заявку в друзья user2, и user2 ее принял
+    2) user2 отправил заявку в друзья user1, и user 1 ее принял
+    Дружба является взаимной, то есть в конкретном примере не важно,
+    является ли request.user from_user либо to_user
+    """
+    serializer_class = FriendSerializer
+
+    def get(self, request, *args, **kwargs):
+        """
+        Получить список своих друзей
+        """
+        user = request.user
+        if user.is_anonymous:
+            return Response(
+                {'message': "UNAUTHORIZED"},
+                status.HTTP_401_UNAUTHORIZED
+            )
+        # получаем все отношения Friends, где user либо в to_user, либо в from_user
+        friends_1 = Friends.objects.filter(from_user=user)
+        friends_2 = Friends.objects.filter(to_user=user)
+        # если user нет ни в одном сете, то есть нет дружбы ни в каком отношнении
+        if not friends_1 and not friends_2:
+            return Response(
+                {'message': "NOT FOUND"},
+                status.HTTP_404_NOT_FOUND
+            )
+        friend_list = {}
+        # придумал бы логику получше, но очень спешил:
+        # из двух qs, где request.user либо в to_user, либо в from_user
+        # собираю один словарь, в который кладу id и username друга
+        for user in friends_1:
+            user_id = user.to_user_id
+            username = user.to_user.username
+            friend_list[user_id] = username
+        for user in friends_2:
+            user_id = user.from_user_id
+            username = user.from_user.username
+            friend_list[user_id] = username
+        # и вывожу пары id: username json-ом
+        return JsonResponse(friend_list)
