@@ -269,6 +269,7 @@ class FriendshipStatusListView(generics.ListCreateAPIView):
     users = User.objects.all()
     friend_request_queryset = FriendshipRequest.objects.all()
     friendship_queryset = Friends.objects.all()
+    serializer_class = FriendSerializer
     """
     Статус дружбы пользователя с другим пользователем
     """
@@ -298,6 +299,18 @@ class FriendshipStatusListView(generics.ListCreateAPIView):
                 )
         first_friend_request_check = FriendshipStatusListView.friend_request_queryset.filter(from_user=user_username,
                                                                                      to_user=checked_user_username)
+        if first_friend_request_check:
+            return Response(
+                {'message': "Есть исходящая заявка к этому пользователю"},
+                status.HTTP_200_OK
+            )
+        second_friend_request_check = FriendshipStatusListView.friend_request_queryset.filter(from_user=checked_user_username,
+                                                                                             to_user=user_username)
+        if first_friend_request_check:
+            return Response(
+                {'message': "Есть входящая заявка от этого пользователя"},
+                status.HTTP_200_OK
+            )
         return Response(
             {'message': "Нет ничего"},
             status.HTTP_200_OK
