@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
+from django.dispatch import receiver
+from django.db.models.signals import post_save
 
 
 class User(AbstractUser):
@@ -58,11 +60,24 @@ class FriendshipRequest(models.Model):
             raise ValidationError("Нельзя отправить заявку в друзья самому себе")
         super().save(*args, **kwargs)
 
-    def accept_friend_request(self):
-        """
-        Принять заявку в друзья от другого пользователя
-        """
 
+@receiver(post_save, sender=FriendshipRequest)
+def create_mutual_friends(instance, created, **kwargs):
+    first_request = FriendshipRequest.objects.filter(
+        from_user=instance.from_user,
+        to_user=instance.to_user)
+    print(first_request)
+    second_request = FriendshipRequest.objects.filter(
+        from_user=instance.to_user,
+        to_user=instance.from_user)
+    print(second_request)
+    if created:
+        if first_request and second_request:
+            # создаем дружбу между польз.
+            Friends.objects.create(from_user=instance.from_user, to_user=instance.to_user)
+            # и удаляем обе заявки
+            first_request.delete()
+            second_request.delete()
 
 class Friends(models.Model):
     """
