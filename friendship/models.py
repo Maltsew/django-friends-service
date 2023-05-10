@@ -66,11 +66,9 @@ def create_mutual_friends(instance, created, **kwargs):
     first_request = FriendshipRequest.objects.filter(
         from_user=instance.from_user,
         to_user=instance.to_user)
-    print(first_request)
     second_request = FriendshipRequest.objects.filter(
         from_user=instance.to_user,
         to_user=instance.from_user)
-    print(second_request)
     if created:
         if first_request and second_request:
             # создаем дружбу между польз.
