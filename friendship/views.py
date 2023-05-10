@@ -52,7 +52,7 @@ class CreateFriendRequestView(generics.ListCreateAPIView):
 
 class AcceptFriendRequestView(generics.ListCreateAPIView):
     """
-
+    Принять заявку в друзья
     """
     queryset = FriendshipRequest.objects.all()
     permission_classes = (AllowAny,)
@@ -75,6 +75,11 @@ class AcceptFriendRequestView(generics.ListCreateAPIView):
                 status.HTTP_404_NOT_FOUND
             )
         to_user = request.user
+        if to_user.is_anonymous:
+            return Response(
+                {'message': "UNAUTHORIZED"},
+                status.HTTP_401_UNAUTHORIZED
+            )
         # если заявка адресована request.user
         if friend_request.to_user == to_user:
             # статус заявки обновлен на 3 (принята)
@@ -100,3 +105,112 @@ class AcceptFriendRequestView(generics.ListCreateAPIView):
                 {'message'},
                 status.HTTP_400_BAD_REQUEST
             )
+
+
+class RejectFriendRequestView(generics.ListCreateAPIView):
+    """
+    Отклонить заявку в друзья
+    """
+    queryset = FriendshipRequest.objects.all()
+    permission_classes = (AllowAny,)
+    serializer_class = FriendshipRequestSerializer
+
+    def put(self, request, *args, **kwargs):
+        """
+        : kwargs : содержит id заявки, которую нужно принять
+        : to_user : всегда request.user
+        : from_user : любой другой пользователь
+        При переходе по эндпоинту, to_user проверяет, есть ли для него заявка в друзья
+        если есть, он ее отклоняет
+        """
+        try:
+            # получаем id заявки в друзья
+            friend_request = FriendshipRequest.objects.get(pk=kwargs['pk'])
+        except ObjectDoesNotExist as e:
+            return Response(
+                {'message': str(e)},
+                status.HTTP_404_NOT_FOUND
+            )
+        to_user = request.user
+        if to_user.is_anonymous:
+            return Response(
+                {'message': "UNAUTHORIZED"},
+                status.HTTP_401_UNAUTHORIZED
+            )
+        # если заявка адресована request.user
+        if friend_request.to_user == to_user:
+            # статус заявки обновлен на 4 (отклонена)
+            FriendshipRequest.objects.filter(pk=kwargs['pk']).update(request_status=4)
+            rejected_request = FriendshipRequest.objects.get(pk=kwargs['pk'])
+            return Response(
+                FriendshipRequestSerializer(rejected_request).data,
+                status.HTTP_200_OK
+            )
+        # если по эндпоинту обратился user1, a to_user!=user1, выкидываем BAD REQUEST
+        else:
+            return Response(
+                {'message'},
+                status.HTTP_400_BAD_REQUEST
+            )
+
+
+class IncomingFriendRequestView(generics.ListCreateAPIView):
+    """
+    Входящие заявки в друзья
+    """
+    queryset = FriendshipRequest.objects.all()
+    permission_classes = (AllowAny,)
+    serializer_class = FriendshipRequestSerializer
+
+    def get(self, request, *args, **kwargs):
+        """
+        Получить входящие заявки в друзья для user
+        """
+        to_user = request.user
+        if to_user.is_anonymous:
+            return Response(
+                {'message': "UNAUTHORIZED"},
+                status.HTTP_401_UNAUTHORIZED
+            )
+        # получаем все заявки в друзья, в которых to_user = request.user
+        incoming_requests = FriendshipRequest.objects.filter(to_user=to_user)
+        if not incoming_requests:
+            return Response(
+                    {'message': "NOT FOUND"},
+                    status.HTTP_404_NOT_FOUND
+                )
+        return Response(
+            FriendshipRequestSerializer(incoming_requests, many=True).data,
+            status.HTTP_200_OK
+        )
+
+
+class OutgoingFriendRequestView(generics.ListCreateAPIView):
+    """
+    Исходящие заявки в друзья
+    """
+    queryset = FriendshipRequest.objects.all()
+    permission_classes = (AllowAny,)
+    serializer_class = FriendshipRequestSerializer
+
+    def get(self, request, *args, **kwargs):
+        """
+        Получить исходящие заявки в друзья для user
+        """
+        from_user = request.user
+        if from_user.is_anonymous:
+            return Response(
+                {'message': "UNAUTHORIZED"},
+                status.HTTP_401_UNAUTHORIZED
+            )
+        # получаем все заявки в друзья, в которых from_user = request.user
+        outgoing_requests = FriendshipRequest.objects.filter(from_user=from_user)
+        if not outgoing_requests:
+            return Response(
+                    {'message': "NOT FOUND"},
+                    status.HTTP_404_NOT_FOUND
+                )
+        return Response(
+            FriendshipRequestSerializer(outgoing_requests, many=True).data,
+            status.HTTP_200_OK
+        )
