@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, FriendshipRequest
+from .models import User, FriendshipRequest, Friends
 from django.contrib.auth import authenticate
 
 
@@ -21,7 +21,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class FriendshipRequestSerializer(serializers.ModelSerializer):
 
-
     class Meta:
         model = FriendshipRequest
         fields = ('id', 'from_user', 'to_user', 'request_status')
+
+
+class FriendSerializer(serializers.Serializer):
+    pass
