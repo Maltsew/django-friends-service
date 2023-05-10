@@ -286,7 +286,13 @@ class FriendshipStatusListView(generics.ListCreateAPIView):
         user_id = request.user.id # сам user
         checked_user_id = request.GET.get('user_id') # id пользователя, с которым проверяется статус дружбы
         user_username = FriendshipStatusListView.users.get(id=user_id)
-        checked_user_username = FriendshipStatusListView.users.get(id=checked_user_id)
+        try:
+            checked_user_username = FriendshipStatusListView.users.get(id=checked_user_id)
+        except ObjectDoesNotExist as e:
+            return Response(
+                {'message': str(e)},
+                status.HTTP_404_NOT_FOUND
+            )
         # необходимо сделать две проверки на наличие любых отношений в Friends
         first_friendship_check = FriendshipStatusListView.friendship_queryset.filter(from_user=user_username,
                                                                                      to_user=checked_user_username)
