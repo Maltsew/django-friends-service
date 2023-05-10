@@ -340,7 +340,13 @@ class RemoveFromFriendView(generics.ListCreateAPIView):
                     {'message': "UNAUTHORIZED"},
                     status.HTTP_401_UNAUTHORIZED
                 )
-        friend_to_remove = User.objects.get(pk=kwargs['pk'])
+        try:
+            friend_to_remove = User.objects.get(pk=kwargs['pk'])
+        except ObjectDoesNotExist as e:
+            return Response(
+                {'message': str(e)},
+                status.HTTP_404_NOT_FOUND
+            )
         try:
             removed_friends_rel = Friends.objects.get(from_user=user, to_user=friend_to_remove)
             removed_friends_rel.delete()
